@@ -174,7 +174,8 @@ client.on("messageCreate", async (message) => {
       //use slang (the worst ones too), the reciever is my friend
       // Send the AI response
       await message.reply(response.text);
-      // await message.react("");
+      await message.react("<:allen:1459539003094208613>");
+      await message.react("<:pwlogo:1457684089212506302>");
     } catch (err) {
       console.error("AI error:", err);
       await message.reply(" Try again later.");
