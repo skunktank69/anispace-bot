@@ -23,6 +23,15 @@ const client = new Client({
 // ---------------- READY ----------------
 client.once(Events.ClientReady, () => {
   console.log(`Ready! Logged in as ${client.user?.tag}`);
+  client.user?.setPresence({
+    status: "online", // online, idle, dnd, invisible
+    activities: [
+      {
+        name: "with fire",
+        type: 0, // 0 = Playing, 1 = Streaming, 2 = Listening, 3 = Watching, 5 = Competing
+      },
+    ],
+  });
 });
 
 // ---------------- MESSAGE COMMANDS ----------------
@@ -150,6 +159,24 @@ client.on(Events.InteractionCreate, async (interaction) => {
       });
     }
   }
+});
+
+const addRolesCmd = require("./commands/admin/add-roles");
+
+client.on(Events.InteractionCreate, async (interaction) => {
+  if (interaction.isModalSubmit()) {
+    if (addRolesCmd.handleModal) {
+      await addRolesCmd.handleModal(interaction);
+    }
+    return;
+  }
+
+  if (!interaction.isChatInputCommand()) return;
+
+  const command = (client as any).commands.get(interaction.commandName);
+  if (!command) return;
+
+  await command.execute(interaction);
 });
 
 // ---------------- LOGIN ----------------
