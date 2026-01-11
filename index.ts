@@ -3,15 +3,24 @@ import {
   Collection,
   GatewayIntentBits,
   Events,
-  TextChannel,
   EmbedBuilder,
-  Interaction,
+  TextChannel,
 } from "discord.js";
-import fs from "fs";
-import path from "path";
 import { fileURLToPath } from "url";
-import { token } from "./config.json";
 
+import path from "path";
+
+import fs from "fs";
+
+import { token, site, googleApiKey } from "./config.json";
+
+import { GoogleGenAI } from "@google/genai";
+
+const GEMINI_API_KEY = googleApiKey;
+
+const ai = new GoogleGenAI({
+  apiKey: GEMINI_API_KEY,
+});
 /* ---------------- PATH ---------------- */
 
 const __filename = fileURLToPath(import.meta.url);
@@ -92,6 +101,43 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
   }
 });
+//makabhosda aag
+
+client.on("messageCreate", async (message) => {
+  // Ignore bot messages
+
+  if (message.author.bot) return;
+
+  // Check if the bot is mentioned
+
+  if (message.mentions.has(client.user)) {
+    try {
+      // Generate ai response
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+
+        contents: `Reply casually in Hinglish to this message ,maintain respect but use moderate amount of slangs , only give the reply dont extend messages,if the message ends with be respectful, answer in formal english, get the tone of the message , if the message is loving or respectful , dont use slangs : "${message.content}"; also if someone replies too often, then reply with:"terimakichu padhle"`,
+      });
+
+      //use slang (the worst ones too), the reciever is my friend
+
+      // Send the AI response
+
+      await message.reply(response.text);
+
+      // await message.react("");
+
+      await message.react("<:allen:1459539003094208613>");
+
+      await message.react("<:pwlogo:1457684089212506302>");
+    } catch (err) {
+      console.error("AI error:", err);
+
+      await message.reply(" Try again later.");
+    }
+  }
+});
 
 /* ---------------- MEMBER JOIN ---------------- */
 
@@ -110,7 +156,19 @@ client.on(Events.GuildMemberAdd, async (member) => {
 
   await channel.send({ content: `hi <@${member.id}>`, embeds: [embed] });
 });
+// ---------------- MEMBER LEAVE ----------------
 
+client.on(Events.GuildMemberRemove, async (member) => {
+  console.log(`Member left: ${member.user.tag}`);
+
+  const channel = member.guild.channels.cache.find(
+    (ch): ch is TextChannel => ch.name === "😭they-left" && ch.isTextBased(),
+  );
+
+  if (!channel) return;
+
+  await channel.send(`<@${member.user.id}> has left the server.`);
+});
 /* ---------------- LOGIN ---------------- */
 
 client.login(token);
