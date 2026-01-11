@@ -169,7 +169,7 @@ client.on("messageCreate", async (message) => {
       // Generate ai response
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
-        contents: `Reply casually in Hinglish to this message ,maintain respect but use moderate amount of slangs , only give the reply dont extend messages,if the message ends with be respectful, answer in formal english, get the tone of the message , if the message is loving or respectful , dont use slangs : "${message.content}"; also if someone replies too often, then reply with:"terimakichu padhle"`,
+        contents: `Reply casually in Hinglish to this message ,maintain respect but use moderate amount of slangs , only give the reply dont extend messages,if the message ends with be respectful, answer in formal english, get the tone of the message , if the message is  respectful , dont use slangs : "${message.content}"`,
       });
       //use slang (the worst ones too), the reciever is my friend
       // Send the AI response

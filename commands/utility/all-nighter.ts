@@ -8,7 +8,6 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName("all-nighter")
     .setDescription("Temporary role + private VC & chat with expiry")
-
     .addIntegerOption((opt) =>
       opt
         .setName("hours")
@@ -17,7 +16,6 @@ module.exports = {
         .setMaxValue(24)
         .setRequired(true),
     )
-
     .addStringOption((opt) =>
       opt
         .setName("users")
@@ -26,23 +24,22 @@ module.exports = {
         )
         .setRequired(false),
     )
-
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles),
 
   async execute(interaction) {
     if (!interaction.guild) return;
+
+    // Defer immediately
     await interaction.deferReply({ ephemeral: true });
 
     const guild = interaction.guild;
     const botMember = guild.members.me;
-    if (!botMember) {
-      return interaction.editReply("❌ Bot member not resolved.");
-    }
+    if (!botMember) return interaction.editReply("❌ Bot member not resolved.");
+
+    const hours = interaction.options.getInteger("hours");
+    const rawUsers = interaction.options.getString("users");
 
     // ---------- USERS ----------
-    const rawUsers = interaction.options.getString("users");
-    const hours = interaction.options.getInteger("hours");
-
     const userIds = new Set();
 
     if (rawUsers) {
@@ -55,12 +52,11 @@ module.exports = {
 
     if (userIds.size === 0) userIds.add(interaction.user.id);
 
-    // ---------- DATE ----------
+    // ---------- DATE TAGS ----------
     const now = new Date();
     const dd = String(now.getDate()).padStart(2, "0");
     const mm = String(now.getMonth() + 1).padStart(2, "0");
     const yy = String(now.getFullYear()).slice(-2);
-
     const dateTag = `${dd}/${mm}/${yy}`;
     const shortTag = `${dd}${mm}`;
 
@@ -68,14 +64,11 @@ module.exports = {
     const textName = `all-nighter-chat-${shortTag}`;
     const voiceName = `all-nighter-vc-${shortTag}`;
 
-    let role = null;
-    let textChannel = null;
-    let voiceChannel = null;
+    let role, textChannel, voiceChannel;
 
     try {
-      // ---------- ROLE (REUSE IF EXISTS) ----------
+      // ---------- ROLE ----------
       role = guild.roles.cache.find((r) => r.name === roleName);
-
       if (!role) {
         role = await guild.roles.create({
           name: roleName,
@@ -83,9 +76,8 @@ module.exports = {
         });
       }
 
-      if (role.position >= botMember.roles.highest.position) {
+      if (role.position >= botMember.roles.highest.position)
         throw new Error("ROLE_TOO_HIGH");
-      }
 
       // ---------- CATEGORY ----------
       let category = guild.channels.cache.find(
@@ -104,10 +96,7 @@ module.exports = {
       // ---------- PERMISSIONS ----------
       const overwrites = [
         { id: guild.id, deny: ["ViewChannel"] },
-        {
-          id: role.id,
-          allow: ["ViewChannel", "Connect", "SendMessages"],
-        },
+        { id: role.id, allow: ["ViewChannel", "Connect", "SendMessages"] },
       ];
 
       // ---------- TEXT CHANNEL ----------
@@ -156,9 +145,7 @@ module.exports = {
         } catch {}
       }
 
-      if (assigned === 0) {
-        throw new Error("NO_VALID_USERS");
-      }
+      if (assigned === 0) throw new Error("NO_VALID_USERS");
 
       // ---------- EXPIRY ----------
       const durationMs = hours * 60 * 60 * 1000;
@@ -166,7 +153,6 @@ module.exports = {
       setTimeout(async () => {
         try {
           const members = await guild.members.fetch();
-
           for (const m of members.values()) {
             if (m.roles.cache.has(role.id)) {
               await m.roles.remove(role).catch(() => {});
@@ -181,21 +167,30 @@ module.exports = {
         } catch {}
       }, durationMs);
 
-      await interaction.editReply(
-        `🌙 **All-nighter live**\n` +
-          `👥 Users added: **${assigned}**\n` +
-          `⏳ Duration: **${hours}h**\n` +
-          `🔒 Channels: ${textChannel} & ${voiceChannel}`,
-      );
+      // ---------- SUCCESS MESSAGE ----------
+      if (!interaction.replied) {
+        await interaction.editReply(
+          `🌙 **All-nighter live**\n` +
+            `👥 Users added: **${assigned}**\n` +
+            `⏳ Duration: **${hours}h**\n` +
+            `🔒 Channels: ${textChannel} & ${voiceChannel}`,
+        );
+      } else {
+        await interaction.followUp({
+          content: `🌙 **All-nighter live**\n👥 Users added: **${assigned}**\n⏳ Duration: **${hours}h**\n🔒 Channels: ${textChannel} & ${voiceChannel}`,
+          ephemeral: true,
+        });
+      }
     } catch (err) {
-      const msg =
-        err.message === "ROLE_TOO_HIGH"
-          ? "❌ My role is too low in hierarchy."
-          : err.message === "NO_VALID_USERS"
-            ? "❌ No valid users found."
-            : "❌ Failed to set up all-nighter.";
+      let msg;
+      if (err.message === "ROLE_TOO_HIGH")
+        msg = "❌ My role is too low in hierarchy.";
+      else if (err.message === "NO_VALID_USERS")
+        msg = "❌ No valid users found.";
+      else msg = "❌ Failed to set up all-nighter.";
 
-      await interaction.editReply(msg);
+      if (!interaction.replied) await interaction.editReply(msg);
+      else await interaction.followUp({ content: msg, ephemeral: true });
     }
   },
 };
