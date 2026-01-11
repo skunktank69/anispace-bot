@@ -1,41 +1,57 @@
-const { REST, Routes } = require("discord.js");
-const { clientId, guildId, token } = require("./config.json");
 const fs = require("fs");
 const path = require("path");
 
-const commands = [];
+// Path to your commands folder
 const foldersPath = path.join(__dirname, "commands");
+if (!fs.existsSync(foldersPath)) {
+  console.error("Commands folder not found!");
+  process.exit(1);
+}
+
 const commandFolders = fs.readdirSync(foldersPath);
+
+const allCommands = [];
+const nameMap = {}; // { commandName: [filenames] }
 
 for (const folder of commandFolders) {
   const commandsPath = path.join(foldersPath, folder);
+  if (!fs.existsSync(commandsPath)) continue;
+
   const commandFiles = fs
     .readdirSync(commandsPath)
-    .filter((file) => file.endsWith(".ts"));
+    .filter((file) => file.endsWith(".ts") || file.endsWith(".js"));
 
   for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
     const command = require(filePath);
+    const cmd = command.default ?? command; // support TS ESM default export
 
-    if ("data" in command && "execute" in command) {
-      commands.push(command.data.toJSON());
+    if ("data" in cmd && "execute" in cmd) {
+      const name = cmd.data.name;
+      allCommands.push({ name, file });
+
+      if (!nameMap[name]) nameMap[name] = [];
+      nameMap[name].push(file);
     }
   }
 }
 
-const rest = new REST().setToken(token);
+// ---------------- LOG ALL COMMANDS ----------------
+console.log("📜 All loaded commands:");
+for (const cmd of allCommands) {
+  console.log(`- ${cmd.name} (from ${cmd.file})`);
+}
 
-(async () => {
-  try {
-    console.log(`Refreshing ${commands.length} commands...`);
+// ---------------- LOG DUPLICATES ----------------
+const duplicates = Object.entries(nameMap).filter(
+  ([name, files]) => files.length > 1,
+);
 
-    const data = await rest.put(
-      Routes.applicationGuildCommands(clientId, guildId),
-      { body: commands },
-    );
-
-    console.log(`Reloaded ${data.length} commands.`);
-  } catch (error) {
-    console.error(error);
+if (duplicates.length > 0) {
+  console.warn("\n⚠️ Duplicate command names detected:");
+  for (const [name, files] of duplicates) {
+    console.warn(`- ${name} found in files: ${files.join(", ")}`);
   }
-})();
+} else {
+  console.log("\n✅ No duplicate command names found!");
+}

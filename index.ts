@@ -8,7 +8,12 @@ import {
 } from "discord.js";
 import path from "path";
 import fs from "fs";
-import { token, site } from "./config.json";
+import { token, site, googleApiKey } from "./config.json";
+import { GoogleGenAI } from "@google/genai";
+const GEMINI_API_KEY = googleApiKey;
+const ai = new GoogleGenAI({
+  apiKey: GEMINI_API_KEY,
+});
 
 // ---------------- CLIENT ----------------
 const client = new Client({
@@ -23,15 +28,6 @@ const client = new Client({
 // ---------------- READY ----------------
 client.once(Events.ClientReady, () => {
   console.log(`Ready! Logged in as ${client.user?.tag}`);
-  client.user?.setPresence({
-    status: "online", // online, idle, dnd, invisible
-    activities: [
-      {
-        name: "with fire",
-        type: 0, // 0 = Playing, 1 = Streaming, 2 = Listening, 3 = Watching, 5 = Competing
-      },
-    ],
-  });
 });
 
 // ---------------- MESSAGE COMMANDS ----------------
@@ -161,6 +157,31 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
+//makabhosda aag
+
+client.on("messageCreate", async (message) => {
+  // Ignore bot messages
+  if (message.author.bot) return;
+
+  // Check if the bot is mentioned
+  if (message.mentions.has(client.user)) {
+    try {
+      // Generate ai response
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: `Reply casually in Hinglish to this message ,maintain respect but use moderate amount of slangs , only give the reply dont extend messages,if the message ends with be respectful, answer in formal english, get the tone of the message , if the message is loving or respectful , dont use slangs : "${message.content}"; also if someone replies too often, then reply with:"terimakichu padhle"`,
+      });
+      //use slang (the worst ones too), the reciever is my friend
+      // Send the AI response
+      await message.reply(response.text);
+      // await message.react("");
+    } catch (err) {
+      console.error("AI error:", err);
+      await message.reply(" Try again later.");
+    }
+  }
+});
+//---------------------------------
 const addRolesCmd = require("./commands/admin/add-roles");
 
 client.on(Events.InteractionCreate, async (interaction) => {
