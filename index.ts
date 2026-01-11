@@ -147,11 +147,17 @@ client.on(Events.GuildMemberAdd, async (member) => {
   );
   if (!channel) return;
 
+  const color =
+    member.displayHexColor === (member.displayColor as unknown as string)
+      ? 0x5865f2
+      : member.displayHexColor;
+
   const embed = new EmbedBuilder()
     .setTitle("WELCOME")
-    .setColor(0x5865f2)
+    .setColor(color)
     .setDescription(`**${member.user.username.toUpperCase()}**`)
     .setThumbnail(member.user.displayAvatarURL())
+    .setImage("https://miro.medium.com/1*l2fG_S9aIAV8ZOLiVoqB5Q.gif")
     .setTimestamp();
 
   await channel.send({ content: `hi <@${member.id}>`, embeds: [embed] });
