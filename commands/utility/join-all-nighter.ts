@@ -20,7 +20,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   // Find all currently active all-nighter roles
   const allNighterRoles = interaction.guild.roles.cache.filter((r) =>
-    r.name.toLowerCase().includes("all nighter"),
+    r.name.toLowerCase().includes("all-nighter"),
   );
 
   if (allNighterRoles.size === 0) {
@@ -51,7 +51,6 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   }
 
   return interaction.reply({
-    content: `✅ You have joined ${addedCount} active all-nighter role(s)!`,
-    ephemeral: true,
+    content: `✅ <@${member.id}> has joined ${addedCount} active all-nighter role(s)!}`,
   });
 }

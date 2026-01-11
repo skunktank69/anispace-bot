@@ -1,4 +1,3 @@
-// commands/global/ping.ts
 import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
 
 export const data = new SlashCommandBuilder()
