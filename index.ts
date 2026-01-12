@@ -21,6 +21,8 @@ const GEMINI_API_KEY = googleApiKey;
 const ai = new GoogleGenAI({
   apiKey: GEMINI_API_KEY,
 });
+import { loadCommands } from "./registerCommands";
+
 /* ---------------- PATH ---------------- */
 
 const __filename = fileURLToPath(import.meta.url);
@@ -46,36 +48,12 @@ type SlashCommand = {
 
 client.commands = new Collection<string, SlashCommand>();
 
-/* ---------------- LOAD COMMANDS ---------------- */
-
-async function loadCommands() {
-  const commandsDir = path.join(__dirname, "commands");
-  if (!fs.existsSync(commandsDir)) return;
-
-  for (const folder of fs.readdirSync(commandsDir)) {
-    const folderPath = path.join(commandsDir, folder);
-    if (!fs.statSync(folderPath).isDirectory()) continue;
-
-    for (const file of fs.readdirSync(folderPath)) {
-      if (!file.endsWith(".js") && !file.endsWith(".ts")) continue;
-
-      const filePath = path.join(folderPath, file);
-      const mod = await import(filePath);
-      const command: SlashCommand = mod.default ?? mod;
-
-      if (!command?.data?.name || !command.execute) continue;
-      client.commands.set(command.data.name, command);
-    }
-  }
-
-  console.log(`Loaded ${client.commands.size} slash commands`);
-}
-
 /* ---------------- READY ---------------- */
 
 client.once(Events.ClientReady, async () => {
   console.log(`Logged in as ${client.user?.tag}`);
-  await loadCommands();
+  await loadCommands(client);
+  console.log("Bot ready");
 });
 
 /* ---------------- INTERACTION HANDLER ---------------- */
@@ -107,10 +85,11 @@ client.on("messageCreate", async (message) => {
   // Ignore bot messages
 
   if (message.author.bot) return;
-
-  // Check if the bot is mentioned
-
+  if (message.mentions.everyone) return;
+  if (message.content.toLowerCase().includes("@all")) return;
   if (message.mentions.has(client.user)) {
+    // Check if the bot is mentioned
+
     try {
       // Generate ai response
 

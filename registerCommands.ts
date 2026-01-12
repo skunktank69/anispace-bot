@@ -1,57 +1,33 @@
-const fs = require("fs");
-const path = require("path");
+import fs from "fs";
+import path from "path";
+import { fileURLToPath, pathToFileURL } from "url";
+import { Collection } from "discord.js";
 
-// Path to your commands folder
-const foldersPath = path.join(__dirname, "commands");
-if (!fs.existsSync(foldersPath)) {
-  console.error("Commands folder not found!");
-  process.exit(1);
-}
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const commandFolders = fs.readdirSync(foldersPath);
+export async function loadCommands(client: any) {
+  client.commands = new Collection();
 
-const allCommands = [];
-const nameMap = {}; // { commandName: [filenames] }
+  const commandsPath = path.join(__dirname, "commands");
+  if (!fs.existsSync(commandsPath)) return;
 
-for (const folder of commandFolders) {
-  const commandsPath = path.join(foldersPath, folder);
-  if (!fs.existsSync(commandsPath)) continue;
+  for (const folder of fs.readdirSync(commandsPath)) {
+    const folderPath = path.join(commandsPath, folder);
+    if (!fs.statSync(folderPath).isDirectory()) continue;
 
-  const commandFiles = fs
-    .readdirSync(commandsPath)
-    .filter((file) => file.endsWith(".ts") || file.endsWith(".js"));
+    for (const file of fs.readdirSync(folderPath)) {
+      if (!file.endsWith(".ts") && !file.endsWith(".js")) continue;
 
-  for (const file of commandFiles) {
-    const filePath = path.join(commandsPath, file);
-    const command = require(filePath);
-    const cmd = command.default ?? command; // support TS ESM default export
+      const filePath = path.join(folderPath, file);
+      const mod = await import(pathToFileURL(filePath).href);
+      const command = mod.default ?? mod;
 
-    if ("data" in cmd && "execute" in cmd) {
-      const name = cmd.data.name;
-      allCommands.push({ name, file });
+      if (!command?.data?.name || !command.execute) continue;
 
-      if (!nameMap[name]) nameMap[name] = [];
-      nameMap[name].push(file);
+      client.commands.set(command.data.name, command);
     }
   }
-}
 
-// ---------------- LOG ALL COMMANDS ----------------
-console.log("📜 All loaded commands:");
-for (const cmd of allCommands) {
-  console.log(`- ${cmd.name} (from ${cmd.file})`);
-}
-
-// ---------------- LOG DUPLICATES ----------------
-const duplicates = Object.entries(nameMap).filter(
-  ([name, files]) => files.length > 1,
-);
-
-if (duplicates.length > 0) {
-  console.warn("\n⚠️ Duplicate command names detected:");
-  for (const [name, files] of duplicates) {
-    console.warn(`- ${name} found in files: ${files.join(", ")}`);
-  }
-} else {
-  console.log("\n✅ No duplicate command names found!");
+  console.log(`✅ Loaded ${client.commands.size} commands`);
 }
